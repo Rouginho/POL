@@ -1,41 +1,12 @@
-const express = require('express');
-const mysql = require('mysql');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const twilio = require('twilio');
-require('dotenv').config();
-
-const app = express();
-app.use(cors());
-app.use(bodyParser.json());
-
-const db = mysql.createConnection({
-  host: process.env.DB_HOST,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASS,
-  database: process.env.DB_NAME,
-  port: process.env.DB_PORT,
-  charset: 'utf8mb4'
-});
-
-db.connect(err => {
-  if (err) {
-    console.error('Error connecting to the database:', err);
-    return;
-  }
-  console.log('✅ Connected to MySQL on Aiven');
-});
-
-// Σύνδεση Twilio
-const client = new twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
-
 app.post('/api/submit', (req, res) => {
-  const { firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia, cartItems, phoneNumber } = req.body;
+  const { firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia, cartItems } = req.body;
 
-  if (!firstName || !lastName || !thl || !perioxh || !diefthinsi || !cartItems || cartItems.length === 0 || !phoneNumber) {
+  // Έλεγχος για τα απαιτούμενα πεδία
+  if (!firstName || !lastName || !thl || !perioxh || !diefthinsi || !cartItems || cartItems.length === 0) {
     return res.status(400).send({ message: 'Λείπουν απαραίτητα πεδία στο αίτημα.' });
   }
 
+  // Εισαγωγή χρήστη στον πίνακα users
   db.query(
     'INSERT INTO users (first_name, last_name, thl, perioxh, diefthinsi, koudouni, sxolia, last_order_time) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
     [firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia],
@@ -61,11 +32,14 @@ app.post('/api/submit', (req, res) => {
           return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση των προϊόντων.' });
         }
 
+        // Προσθήκη του +30 στο τηλέφωνο του χρήστη
+        const formattedPhoneNumber = `+30${thl}`;
+
         // Στείλτε SMS επιβεβαίωσης μέσω Twilio
         client.messages.create({
           body: 'Η παραγγελία σας καταχωρήθηκε επιτυχώς!',
           from: process.env.TWILIO_PHONE_NUMBER, 
-          to: phoneNumber
+          to: formattedPhoneNumber
         })
         .then((message) => {
           console.log(`SMS sent with SID: ${message.sid}`);
@@ -78,8 +52,4 @@ app.post('/api/submit', (req, res) => {
       });
     }
   );
-});
-
-app.listen(5000, () => {
-  console.log('Server running on port 5000');
 });
