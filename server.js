@@ -26,15 +26,15 @@ db.connect(err => {
 });
 
 app.post('/api/submit', (req, res) => {
-  const { firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia, cartItems } = req.body;
+  const { firstName, lastName, thl,email, perioxh, diefthinsi, koudouni, sxolia, cartItems } = req.body;
 
-  if (!firstName || !lastName || !thl || !perioxh || !diefthinsi || !cartItems || cartItems.length === 0) {
+  if (!firstName || !lastName || !thl || !email || !perioxh || !diefthinsi || !cartItems || cartItems.length === 0) {
     return res.status(400).send({ message: 'Λείπουν απαραίτητα πεδία στο αίτημα.' });
   }
 
   db.query(
-    'INSERT INTO users (first_name, last_name, thl, perioxh, diefthinsi, koudouni, sxolia, last_order_time) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
-    [firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia],
+    'INSERT INTO users (first_name, last_name, thl,email, perioxh, diefthinsi, koudouni, sxolia, last_order_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())',
+    [firstName, lastName, thl, email, perioxh, diefthinsi, koudouni, sxolia],
     (err, result) => {
       if (err) {
         console.error('Error inserting order:', err);
