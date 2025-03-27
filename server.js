@@ -32,27 +32,19 @@ app.post('/api/submit', (req, res) => {
     return res.status(400).send({ message: 'Λείπουν απαραίτητα πεδία στο αίτημα.' });
   }
 
-  const sqlOrder = 'INSERT INTO users (first_name, last_name, thl, perioxh, diefthinsi, koudouni, sxolia, last_order_time) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())';
-  db.query(sqlOrder, [firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia], (err, result) => {
-    if (err) {
-      console.error('Error inserting order:', err);
-      return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση της παραγγελίας.' });
-    }
-
-    const orderId = result.insertId;
-    
-    // Ανάκτηση user_id από τον users πίνακα
-    const sqlGetUserId = 'SELECT id FROM users WHERE thl = ? ORDER BY last_order_time DESC LIMIT 1';
-    db.query(sqlGetUserId, [thl], (err, userResult) => {
-      if (err || userResult.length === 0) {
-        console.error('Error retrieving user_id:', err);
-        return res.status(500).send({ message: 'Σφάλμα κατά την εύρεση του user_id' });
+  db.query(
+    'INSERT INTO users (first_name, last_name, thl, perioxh, diefthinsi, koudouni, sxolia, last_order_time) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+    [firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia],
+    (err, result) => {
+      if (err) {
+        console.error('Error inserting order:', err);
+        return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση της παραγγελίας.' });
       }
-      
-      const userId = userResult[0].id;
-      const sqlOrderItems = 'INSERT INTO users_order (order_id, user_id, name, price, quantity) VALUES ?';
-      const orderItems = cartItems.map(item => [orderId, userId, item.name, item.price, item.quantity]);
 
+      const orderId = result.insertId;
+      const orderItems = cartItems.map(item => [orderId, item.name, item.price, item.quantity]);
+
+      const sqlOrderItems = 'INSERT INTO users_order (order_id, name, price, quantity) VALUES ?';
       db.query(sqlOrderItems, [orderItems], (err, result) => {
         if (err) {
           console.error('Error inserting order items:', err);
@@ -60,8 +52,8 @@ app.post('/api/submit', (req, res) => {
         }
         res.status(200).send({ message: 'Η παραγγελία καταχωρήθηκε επιτυχώς!' });
       });
-    });
-  });
+    }
+  );
 });
 
 app.listen(5000, () => {
