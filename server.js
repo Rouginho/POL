@@ -41,10 +41,13 @@ app.post('/api/submit', (req, res) => {
         return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση της παραγγελίας.' });
       }
 
-      const orderId = result.insertId;
-      const orderItems = cartItems.map(item => [orderId, item.name, item.price, item.quantity]);
+      const userId = result.insertId; // Ανάκτηση του user_id από την εισαγωγή χρήστη
+      const orderId = userId; // Αν το order_id είναι ίδιο με το user_id
 
-      const sqlOrderItems = 'INSERT INTO users_order (order_id, name, price, quantity) VALUES ?';
+      // Καταχώρηση των αντικειμένων της παραγγελίας στον πίνακα users_order
+      const orderItems = cartItems.map(item => [orderId, userId, item.name, item.price, item.quantity]);
+
+      const sqlOrderItems = 'INSERT INTO users_order (order_id, user_id, name, price, quantity) VALUES ?';
       db.query(sqlOrderItems, [orderItems], (err, result) => {
         if (err) {
           console.error('Error inserting order items:', err);
