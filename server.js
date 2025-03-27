@@ -32,22 +32,29 @@ app.post('/api/submit', (req, res) => {
     return res.status(400).send({ message: 'Λείπουν απαραίτητα πεδία στο αίτημα.' });
   }
 
+  // Εισαγωγή του χρήστη πρώτα
   db.query(
     'INSERT INTO users (first_name, last_name, thl, perioxh, diefthinsi, koudouni, sxolia, last_order_time) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
     [firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia],
     (err, result) => {
       if (err) {
-        console.error('Error inserting order:', err);
-        return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση της παραγγελίας.' });
+        console.error('Error inserting user:', err);
+        return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση του χρήστη.' });
       }
 
-      const userId = result.insertId; // Ανάκτηση του user_id από την εισαγωγή χρήστη
-      const orderId = userId; // Αν το order_id είναι ίδιο με το user_id
+      const userId = result.insertId; // Το user_id του νέου χρήστη
+      const orderId = userId;  // Ή μπορείς να το αφήσεις να το δημιουργήσεις μόνο του για τις παραγγελίες
 
-      // Καταχώρηση των αντικειμένων της παραγγελίας στον πίνακα users_order
-      const orderItems = cartItems.map(item => [orderId, userId, item.name, item.price, item.quantity]);
+      const orderItems = cartItems.map(item => [
+        orderId,  // Χρησιμοποιούμε το userId για να συνδέσουμε την παραγγελία με το χρήστη
+        item.name,
+        item.price,
+        item.quantity,
+        firstName,  // Το πρώτο όνομα του χρήστη
+        lastName    // Το επώνυμο του χρήστη
+      ]);
 
-      const sqlOrderItems = 'INSERT INTO users_order (order_id, user_id, name, price, quantity) VALUES ?';
+      const sqlOrderItems = 'INSERT INTO users_order (order_id, user_id, name, price, quantity, first_name, last_name) VALUES ?';
       db.query(sqlOrderItems, [orderItems], (err, result) => {
         if (err) {
           console.error('Error inserting order items:', err);
@@ -58,6 +65,7 @@ app.post('/api/submit', (req, res) => {
     }
   );
 });
+
 
 app.listen(5000, () => {
   console.log('Server running on port 5000');
