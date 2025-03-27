@@ -2,9 +2,9 @@ app.post('/api/submit', (req, res) => {
   const { firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia, cartItems } = req.body;
 
   // Έλεγχος για τα απαιτούμενα πεδία
-  if (!firstName || !lastName || !thl || !perioxh || !diefthinsi || !cartItems || cartItems.length === 0) {
-    return res.status(400).send({ message: 'Λείπουν απαραίτητα πεδία στο αίτημα.' });
-  }
+  //if (!firstName || !lastName || !thl || !perioxh || !diefthinsi || !cartItems || cartItems.length === 0) {
+   // return res.status(400).send({ message: 'Λείπουν απαραίτητα πεδία στο αίτημα.' });
+ // }
 
   // Εισαγωγή χρήστη στον πίνακα users
   db.query(
