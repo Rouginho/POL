@@ -2,8 +2,8 @@ const express = require('express');
 const mysql = require('mysql');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const twilio = require('twilio');
 require('dotenv').config();
-const twilio = require('twilio');  // Εισαγωγή Twilio SDK
 
 const app = express();
 app.use(cors());
@@ -18,9 +18,6 @@ const db = mysql.createConnection({
   charset: 'utf8mb4'
 });
 
-// Ρύθμιση σύνδεσης Twilio
-const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
-
 db.connect(err => {
   if (err) {
     console.error('Error connecting to the database:', err);
@@ -29,15 +26,16 @@ db.connect(err => {
   console.log('✅ Connected to MySQL on Aiven');
 });
 
-app.post('/api/submit', (req, res) => {
-  const { firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia, cartItems } = req.body;
+// Σύνδεση Twilio
+const client = new twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH_TOKEN);
 
-  // Έλεγχος για τα απαιτούμενα πεδία
-  if (!firstName || !lastName || !thl || !perioxh || !diefthinsi || !cartItems || cartItems.length === 0) {
+app.post('/api/submit', (req, res) => {
+  const { firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia, cartItems, phoneNumber } = req.body;
+
+  if (!firstName || !lastName || !thl || !perioxh || !diefthinsi || !cartItems || cartItems.length === 0 || !phoneNumber) {
     return res.status(400).send({ message: 'Λείπουν απαραίτητα πεδία στο αίτημα.' });
   }
 
-  // Εισαγωγή χρήστη στον πίνακα users
   db.query(
     'INSERT INTO users (first_name, last_name, thl, perioxh, diefthinsi, koudouni, sxolia, last_order_time) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
     [firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia],
@@ -47,11 +45,10 @@ app.post('/api/submit', (req, res) => {
         return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση του χρήστη.' });
       }
 
-      const userId = result.insertId; // Το user_id από την εισαγωγή του χρήστη
+      const userId = result.insertId;
 
-      // Εισαγωγή αντικειμένων παραγγελίας στον πίνακα users_order
       const orderItems = cartItems.map(item => [
-        userId,  // Χρησιμοποιούμε το userId για να το συνδέσουμε με το χρήστη
+        userId, 
         item.name,
         item.price,
         item.quantity
@@ -64,21 +61,20 @@ app.post('/api/submit', (req, res) => {
           return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση των προϊόντων.' });
         }
 
-        // Αποστολή SMS επιβεβαίωσης στον χρήστη μέσω Twilio
-        client.messages
-          .create({
-            body: `Γεια σας ${firstName} ${lastName}, η παραγγελία σας καταχωρήθηκε επιτυχώς.`,
-            from: process.env.TWILIO_PHONE_NUMBER,
-            to: thl  // Το τηλέφωνο του χρήστη
-          })
-          .then(message => {
-            console.log('SMS sent:', message.sid);
-            res.status(200).send({ message: 'Η παραγγελία καταχωρήθηκε και αποστάλθηκε επιβεβαίωση μέσω SMS!' });
-          })
-          .catch(err => {
-            console.error('Error sending SMS:', err);
-            res.status(500).send({ message: 'Σφάλμα κατά την αποστολή SMS επιβεβαίωσης.' });
-          });
+        // Στείλτε SMS επιβεβαίωσης μέσω Twilio
+        client.messages.create({
+          body: 'Η παραγγελία σας καταχωρήθηκε επιτυχώς!',
+          from: process.env.TWILIO_PHONE_NUMBER, 
+          to: phoneNumber
+        })
+        .then((message) => {
+          console.log(`SMS sent with SID: ${message.sid}`);
+          res.status(200).send({ message: 'Η παραγγελία καταχωρήθηκε επιτυχώς και το SMS επιβεβαίωσης στάλθηκε!' });
+        })
+        .catch((error) => {
+          console.error('Error sending SMS:', error);
+          res.status(500).send({ message: 'Σφάλμα κατά την αποστολή SMS.' });
+        });
       });
     }
   );
