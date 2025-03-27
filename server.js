@@ -51,10 +51,11 @@ app.post('/api/submit', (req, res) => {
         return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση του χρήστη.' });
       }
 
-      const userId = result.insertId;
+      const userId = result.insertId; // Το userId που επιστρέφει από την εισαγωγή του χρήστη
 
+      // Εισαγωγή αντικειμένων παραγγελίας στον πίνακα users_order
       const orderItems = cartItems.map(item => [
-        userId, 
+        userId,  // Χρησιμοποιούμε το userId για να το συνδέσουμε με το χρήστη
         item.name,
         item.price,
         item.quantity
@@ -73,8 +74,8 @@ app.post('/api/submit', (req, res) => {
         // Στείλτε SMS επιβεβαίωσης μέσω Twilio
         client.messages.create({
           body: 'Η παραγγελία σας καταχωρήθηκε επιτυχώς!',
-          from: process.env.TWILIO_PHONE_NUMBER, 
-          to: formattedPhoneNumber
+          from: process.env.TWILIO_PHONE_NUMBER, // Ο αριθμός τηλεφώνου Twilio από το .env
+          to: formattedPhoneNumber // Ο αριθμός τηλεφώνου του χρήστη με το +30 μπροστά
         })
         .then((message) => {
           console.log(`SMS sent with SID: ${message.sid}`);
@@ -88,6 +89,7 @@ app.post('/api/submit', (req, res) => {
     }
   );
 });
+);
 
 // Εκκίνηση του server
 app.listen(5000, () => {
