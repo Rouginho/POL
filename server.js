@@ -89,7 +89,7 @@ app.post('/api/submit', (req, res) => {
     }
   );
 });
-);
+
 
 // Εκκίνηση του server
 app.listen(5000, () => {
