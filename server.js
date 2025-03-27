@@ -32,68 +32,31 @@ app.post('/api/submit', (req, res) => {
     return res.status(400).send({ message: 'Λείπουν απαραίτητα πεδία στο αίτημα.' });
   }
 
-  db.beginTransaction(err => {
-    if (err) {
-      console.error('Transaction Error:', err);
-      return res.status(500).send({ message: 'Σφάλμα κατά την έναρξη συναλλαγής.' });
-    }
-
-    // 1️⃣ Εισαγωγή του χρήστη
-    const insertUserQuery = `
-      INSERT INTO users (first_name, last_name, thl, perioxh, diefthinsi, koudouni, sxolia, last_order_time) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-    `;
-    
-    db.query(insertUserQuery, [firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia], (err, userResult) => {
+  db.query(
+    'INSERT INTO users (first_name, last_name, thl, perioxh, diefthinsi, koudouni, sxolia, last_order_time) VALUES (?, ?, ?, ?, ?, ?, ?, NOW())',
+    [firstName, lastName, thl, perioxh, diefthinsi, koudouni, sxolia],
+    (err, result) => {
       if (err) {
-        console.error('Error inserting user:', err);
-        return db.rollback(() => res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση του χρήστη.' }));
+        console.error('Error inserting order:', err);
+        return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση της παραγγελίας.' });
       }
 
-      const userId = userResult.insertId;
+      const userId = result.insertId; // Ανάκτηση του user_id από την εισαγωγή χρήστη
+      const orderId = userId; // Αν το order_id είναι ίδιο με το user_id
 
-      // 2️⃣ Δημιουργία νέας παραγγελίας
-      const insertOrderQuery = `INSERT INTO orders (user_id, order_time) VALUES (?, NOW())`;
+      // Καταχώρηση των αντικειμένων της παραγγελίας στον πίνακα users_order
+      const orderItems = cartItems.map(item => [orderId, userId, item.name, item.price, item.quantity]);
 
-      db.query(insertOrderQuery, [userId], (err, orderResult) => {
+      const sqlOrderItems = 'INSERT INTO users_order (order_id, user_id, name, price, quantity) VALUES ?';
+      db.query(sqlOrderItems, [orderItems], (err, result) => {
         if (err) {
-          console.error('Error inserting order:', err);
-          return db.rollback(() => res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση της παραγγελίας.' }));
+          console.error('Error inserting order items:', err);
+          return res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση των προϊόντων.' });
         }
-
-        const orderId = orderResult.insertId; // Το μοναδικό order_id
-
-        // 3️⃣ Εισαγωγή προϊόντων στην παραγγελία
-        const orderItems = cartItems.map(item => [
-          orderId,
-          userId,
-          item.name,
-          item.price,
-          item.quantity
-        ]);
-
-        const insertOrderItemsQuery = `
-          INSERT INTO users_order (order_id, user_id, name, price, quantity) VALUES ?
-        `;
-
-        db.query(insertOrderItemsQuery, [orderItems], (err) => {
-          if (err) {
-            console.error('Error inserting order items:', err);
-            return db.rollback(() => res.status(500).send({ message: 'Σφάλμα κατά την αποθήκευση των προϊόντων.' }));
-          }
-
-          db.commit(err => {
-            if (err) {
-              console.error('Transaction commit error:', err);
-              return db.rollback(() => res.status(500).send({ message: 'Σφάλμα κατά την ολοκλήρωση της παραγγελίας.' }));
-            }
-
-            res.status(200).send({ message: 'Η παραγγελία καταχωρήθηκε επιτυχώς!' });
-          });
-        });
+        res.status(200).send({ message: 'Η παραγγελία καταχωρήθηκε επιτυχώς!' });
       });
-    });
-  });
+    }
+  );
 });
 
 app.listen(5000, () => {
