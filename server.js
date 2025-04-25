@@ -10,7 +10,6 @@ app.use(bodyParser.json());
 
 // Helper to get client IP
 const getUserIP = (req) => {
-  // standard header set by proxies/load-balancers:
   const forwarded = req.headers['x-forwarded-for'];
   return forwarded ? forwarded.split(',')[0].trim() : req.socket.remoteAddress;
 };
@@ -51,7 +50,7 @@ app.post('/api/submit', (req, res) => {
     return res.status(400).send({ message: 'Λείπουν απαραίτητα πεδία στο αίτημα.' });
   }
 
-  // 1) Check for recent order from this IP in last 10 minutes
+  // 1) Έλεγχος για παραγγελία από αυτή την IP εντός 10 λεπτών
   const checkSql = `
     SELECT 1
       FROM users_new
@@ -64,13 +63,15 @@ app.post('/api/submit', (req, res) => {
       console.error('Error checking recent order:', err);
       return res.status(500).send({ message: 'Σφάλμα κατά τον έλεγχο προηγούμενης παραγγελίας.' });
     }
+
     if (rows.length) {
+      // Νέο μήνυμα για επαναυποβολή πριν περάσει ο χρόνος
       return res
         .status(429)
-        .send({ message: 'Έχετε ήδη κάνει παραγγελία. Παρακαλώ περιμένετε 10 λεπτά πριν ξαναδοκιμάσετε.' });
+        .send({ message: 'Έχετε πραγματοποιήσει παραγγελία. Δοκιμάστε ξανά αργότερα.' });
     }
 
-    // 2) Insert new user/order record
+    // 2) Εισαγωγή νέας παραγγελίας
     const insertUserSql = `
       INSERT INTO users_new
         (first_name, last_name, thl, email, perioxh, diefthinsi, koudouni, sxolia, ip_address, last_order_time)
@@ -87,7 +88,7 @@ app.post('/api/submit', (req, res) => {
       const userId  = result.insertId;
       const orderId = userId;  // assuming order_id = user_id
 
-      // 3) Bulk insert order items
+      // 3) Εισαγωγή προϊόντων παραγγελίας
       const orderItems = cartItems.map(item => [
         orderId,
         userId,
